@@ -8,14 +8,14 @@ module_env = env.Clone()
 module_env.Append(CXXFLAGS=['-std=c++17'])
 module_env.Append(CXXFLAGS=['-frtti'])
 
-module_env.Append(CPPPATH = ['interpreter_tests/include/'])
-ps_engine_lib_sources = ["interpreter_tests/src/CompiledGame.cpp",
-"interpreter_tests/src/Compiler.cpp",
-"interpreter_tests/src/PSEngine.cpp",
-"interpreter_tests/src/ParsedGame.cpp",
-"interpreter_tests/src/Parser.cpp",
-"interpreter_tests/src/TextProvider.cpp",
-"interpreter_tests/src/PSLogger.cpp"]
+module_env.Append(CPPPATH = ['Psionic/include/'])
+ps_engine_lib_sources = ["Psionic/src/CompiledGame.cpp",
+"Psionic/src/Compiler.cpp",
+"Psionic/src/PSEngine.cpp",
+"Psionic/src/ParsedGame.cpp",
+"Psionic/src/Parser.cpp",
+"Psionic/src/TextProvider.cpp",
+"Psionic/src/PSLogger.cpp"]
 
 module_env.add_source_files(module_env.modules_sources, "*.cpp") # Add all cpp files to the build
 module_env.add_source_files(module_env.modules_sources, ps_engine_lib_sources)
