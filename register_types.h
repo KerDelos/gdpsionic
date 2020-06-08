@@ -1,5 +1,5 @@
 /* register_types.h */
 
-void register_psengine_types();
-void unregister_psengine_types();
+void register_gdpsionic_types();
+void unregister_gdpsionic_types();
 

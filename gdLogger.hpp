@@ -1,7 +1,7 @@
 #ifndef GDLOGGER_H
 #define GDLOGGER_H
 
-#include "interpreter_tests/include/PSLogger.hpp"
+#include "psionic/include/PSLogger.hpp"
 #include "core/error_macros.h"
 #include "core/print_string.h"
 
