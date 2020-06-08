@@ -5,10 +5,10 @@
 #include "core/class_db.h"
 #include "gdpsengine.hpp"
 
-void register_psengine_types() {
+void register_gdpsionic_types() {
     ClassDB::register_class<GDPSEngine>();
 }
 
-void unregister_psengine_types() {
+void unregister_gdpsionic_types() {
    // Nothing to do here in this example.
 }

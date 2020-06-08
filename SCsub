@@ -7,6 +7,7 @@ module_env = env.Clone()
 
 module_env.Append(CXXFLAGS=['-std=c++17'])
 module_env.Append(CXXFLAGS=['-frtti'])
+module_env.Append(CXXFLAGS=['-Wno-sign-compare'])
 
 module_env.Append(CPPPATH = ['Psionic/include/'])
 ps_engine_lib_sources = ["Psionic/src/CompiledGame.cpp",
