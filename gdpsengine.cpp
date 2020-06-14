@@ -50,7 +50,7 @@ void GDPSEngine::load_game_from_file_path(String p_fpath)
     {
         print_line("gdpsengine : opened gd file");
         file_content = gdfile->get_as_utf8_string().utf8();
-        print_line(file_content.c_str());
+        //print_line(file_content.c_str());
         
     }
     else
