@@ -18,6 +18,10 @@ void GDPSEngine::_bind_methods() {
     ClassDB::bind_method(D_METHOD("load_game_from_file_path","fpath"), &GDPSEngine::load_game_from_file_path);
     ClassDB::bind_method(D_METHOD("get_level_state"), &GDPSEngine::get_level_state);
     ClassDB::bind_method(D_METHOD("send_input","input"), &GDPSEngine::send_input);
+    ClassDB::bind_method(D_METHOD("get_level_count"), &GDPSEngine::get_level_count);
+    ClassDB::bind_method(D_METHOD("load_level","level_idx"), &GDPSEngine::load_level);
+    ClassDB::bind_method(D_METHOD("is_level_complete"), &GDPSEngine::is_level_complete);
+
 }
 
 GDPSEngine::GDPSEngine() {
@@ -70,9 +74,8 @@ void GDPSEngine::load_game_from_file_path(String p_fpath)
         }
         else
         {
+            print_line("gdpsengine : loading game"); 
             m_psengine.load_game(compiled_puzzle_opt.value());
-            m_psengine.Load_first_level();
-            m_psengine.print_game_state();
         }
     }
     else
@@ -143,4 +146,20 @@ void GDPSEngine::send_input(String p_input)
         }
     }
     m_psengine.print_game_state();
+}
+
+
+int GDPSEngine::get_level_count()
+{
+    return m_psengine.get_number_of_levels();
+}
+    
+void GDPSEngine::load_level(int p_level_idx)
+{
+    m_psengine.load_level(p_level_idx);
+}
+
+bool GDPSEngine::is_level_complete()
+{
+    return m_psengine.is_level_won();
 }

@@ -27,6 +27,11 @@ public:
 
     Dictionary get_level_state();
     void send_input(String p_input);
+
+    int get_level_count();
+    void load_level(int p_level_idx);
+
+    bool is_level_complete();
 };
 
 #endif
