@@ -28,6 +28,8 @@ public:
     Dictionary get_level_state();
     void send_input(String p_input);
 
+    Array get_turn_deltas();
+
     int get_level_count();
     void load_level(int p_level_idx);
 

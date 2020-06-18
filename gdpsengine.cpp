@@ -5,6 +5,7 @@
 #include "Compiler.hpp"
 #include "PSEngine.hpp"
 #include "gdLogger.hpp"
+#include "EnumHelpers.hpp"
 
 #include <map>
 
@@ -17,6 +18,7 @@ void GDPSEngine::_bind_methods() {
     ClassDB::bind_method(D_METHOD("_process"), &GDPSEngine::_process);
     ClassDB::bind_method(D_METHOD("load_game_from_file_path","fpath"), &GDPSEngine::load_game_from_file_path);
     ClassDB::bind_method(D_METHOD("get_level_state"), &GDPSEngine::get_level_state);
+    ClassDB::bind_method(D_METHOD("get_turn_deltas"), &GDPSEngine::get_turn_deltas);
     ClassDB::bind_method(D_METHOD("send_input","input"), &GDPSEngine::send_input);
     ClassDB::bind_method(D_METHOD("get_level_count"), &GDPSEngine::get_level_count);
     ClassDB::bind_method(D_METHOD("load_level","level_idx"), &GDPSEngine::load_level);
@@ -148,6 +150,58 @@ void GDPSEngine::send_input(String p_input)
     m_psengine.print_game_state();
 }
 
+Array GDPSEngine::get_turn_deltas()
+{
+    vector<PSEngine::SubturnHistory> ps_turn_deltas = m_psengine.get_turn_deltas();
+
+    Array gd_turn_deltas;
+
+    for(const auto& ps_subturn_delta : ps_turn_deltas)
+    {
+        Array gd_subturn_deltas;
+
+        for(const auto& ps_rule_delta : ps_subturn_delta.steps)
+        {
+            Dictionary gd_rule_delta;
+            gd_rule_delta["rule"] = ps_rule_delta.rule_applied.rule_line;
+            gd_rule_delta["direction"] = enum_to_str(ps_rule_delta.rule_direction,PSEngine::to_absolute_direction).value_or("ERROR").c_str();
+            gd_rule_delta["origin_x"] = ps_rule_delta.origin_x;
+            gd_rule_delta["origin_y"] = ps_rule_delta.origin_y;
+
+            Array gd_cells_deltas;
+
+            for(const auto& ps_cell_delta : ps_rule_delta.cell_deltas)
+            {
+                Dictionary gd_cell_delta;
+                gd_cell_delta["x"] = ps_cell_delta.x;
+                gd_cell_delta["y"] = ps_cell_delta.y;
+
+                Array gd_deltas;
+                
+                for(const auto& ps_delta : ps_cell_delta.deltas)
+                {
+                    Dictionary gd_delta;
+                    //todo the pointer check shouldn't be necessary and probably means i need to fix something in psionic
+                    gd_delta["object"] = ps_delta.object.get() != nullptr ? ps_delta.object->identifier.c_str() : "ERROR";
+                    gd_delta["type"] = enum_to_str(ps_delta.type,PSEngine::to_object_delta_type).value_or("ERROR").c_str();
+
+                    gd_deltas.append(gd_delta);
+                }
+                gd_cell_delta["deltas"] = gd_deltas;
+
+                gd_cells_deltas.append(gd_cell_delta);
+            }
+
+            gd_rule_delta["cell_deltas"] = gd_cells_deltas;
+
+            gd_subturn_deltas.append(gd_rule_delta);
+        }
+
+        gd_turn_deltas.append(gd_subturn_deltas);
+    }
+
+    return gd_turn_deltas;
+}
 
 int GDPSEngine::get_level_count()
 {
