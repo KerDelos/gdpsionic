@@ -41,7 +41,7 @@ void GDPSEngine::_init() {
 
 void GDPSEngine::_process(float delta) {
 
-  
+
 }
 
 void GDPSEngine::load_game_from_file_path(String p_fpath)
@@ -57,7 +57,7 @@ void GDPSEngine::load_game_from_file_path(String p_fpath)
         print_line("gdpsengine : opened gd file");
         file_content = gdfile->get_as_utf8_string().utf8();
         //print_line(file_content.c_str());
-        
+
     }
     else
     {
@@ -72,17 +72,17 @@ void GDPSEngine::load_game_from_file_path(String p_fpath)
         std::optional<CompiledGame> compiled_puzzle_opt = puzzle_compiler.compile_game(parsed_game.value());
         if(!compiled_puzzle_opt.has_value())
         {
-            print_line("gdpsengine : could not compile game properly"); 
+            print_line("gdpsengine : could not compile game properly");
         }
         else
         {
-            print_line("gdpsengine : loading game"); 
+            print_line("gdpsengine : loading game");
             m_psengine.load_game(compiled_puzzle_opt.value());
         }
     }
     else
     {
-        print_line("gdpsengine : something went wrong during the game parsing"); 
+        print_line("gdpsengine : something went wrong during the game parsing");
     }
 
     gdfile->close();
@@ -163,37 +163,88 @@ Array GDPSEngine::get_turn_deltas()
         for(const auto& ps_rule_delta : ps_subturn_delta.steps)
         {
             Dictionary gd_rule_delta;
-            gd_rule_delta["rule"] = ps_rule_delta.rule_applied.rule_line;
-            gd_rule_delta["direction"] = enum_to_str(ps_rule_delta.rule_direction,PSEngine::to_absolute_direction).value_or("ERROR").c_str();
-            gd_rule_delta["origin_x"] = ps_rule_delta.origin_x;
-            gd_rule_delta["origin_y"] = ps_rule_delta.origin_y;
-
-            Array gd_cells_deltas;
-
-            for(const auto& ps_cell_delta : ps_rule_delta.cell_deltas)
+            if(ps_rule_delta.is_movement_resolution)
             {
-                Dictionary gd_cell_delta;
-                gd_cell_delta["x"] = ps_cell_delta.x;
-                gd_cell_delta["y"] = ps_cell_delta.y;
+                gd_rule_delta["is_movement"] = true;
 
-                Array gd_deltas;
-                
-                for(const auto& ps_delta : ps_cell_delta.deltas)
+                Array gd_movements;
+                for(const auto& ps_movement_delta : ps_rule_delta.movement_deltas)
                 {
-                    Dictionary gd_delta;
-                    //todo the pointer check shouldn't be necessary and probably means i need to fix something in psionic
-                    gd_delta["object"] = ps_delta.object.get() != nullptr ? ps_delta.object->identifier.c_str() : "ERROR";
-                    gd_delta["type"] = enum_to_str(ps_delta.type,PSEngine::to_object_delta_type).value_or("ERROR").c_str();
+                    Dictionary gd_movement;
+                    gd_movement["origin_x"] = ps_movement_delta.origin_x;
+                    gd_movement["origin_y"] = ps_movement_delta.origin_y;
+                    gd_movement["destination_x"] = ps_movement_delta.destination_x;
+                    gd_movement["destination_y"] = ps_movement_delta.destination_y;
+                    gd_movement["move_direction"] = enum_to_str(ps_movement_delta.move_direction,PSEngine::to_absolute_direction).value_or("ERROR").c_str();
+                    gd_movement["object"] = ps_movement_delta.object.get() != nullptr ? ps_movement_delta.object->identifier.c_str() : "ERROR";
 
-                    gd_deltas.append(gd_delta);
+                    gd_movements.append(gd_movement);
                 }
-                gd_cell_delta["deltas"] = gd_deltas;
-
-                gd_cells_deltas.append(gd_cell_delta);
+                gd_rule_delta["movements"] = gd_movements;
             }
+            else
+            {
+                gd_rule_delta["is_movement"] = false;
 
-            gd_rule_delta["cell_deltas"] = gd_cells_deltas;
+                gd_rule_delta["rule"] = ps_rule_delta.rule_applied.rule_line;
 
+                Array gd_rule_apllications;
+
+                for(const auto& ps_application_delta : ps_rule_delta.rule_application_deltas)
+                {
+                    Dictionary gd_application_delta;
+                    gd_application_delta["direction"] = enum_to_str(ps_application_delta.rule_direction,PSEngine::to_absolute_direction).value_or("ERROR").c_str();
+
+                    //todo maybe this is not necessary information ?
+                    Array gd_pattern_match_infos;
+                    for(const auto& ps_pattern_match_info : ps_application_delta.match_infos)
+                    {
+                        Dictionary gd_pattern_match;
+                        gd_pattern_match["x"] = ps_pattern_match_info.x;
+                        gd_pattern_match["y"] = ps_pattern_match_info.y;
+
+                        Array gd_wildcard_match_distances;
+                        for(const auto& ps_wildcard_match_distance: ps_pattern_match_info.wildcard_match_distances)
+                        {
+                            gd_wildcard_match_distances.append(ps_wildcard_match_distance);
+                        }
+                        gd_pattern_match["wildcard_match_distances"] = gd_wildcard_match_distances;
+
+                        gd_pattern_match_infos.append(gd_pattern_match);
+                    }
+                    gd_application_delta["pattern_match_info"] = gd_pattern_match_infos;
+
+                    Array gd_cells_deltas;
+
+                    for(const auto& ps_cell_delta : ps_application_delta.cell_deltas)
+                    {
+                        Dictionary gd_cell_delta;
+
+                        gd_cell_delta["x"] = ps_cell_delta.x;
+                        gd_cell_delta["y"] = ps_cell_delta.y;
+
+                        Array gd_deltas;
+
+                        for(const auto& ps_delta : ps_cell_delta.deltas)
+                        {
+                            Dictionary gd_delta;
+                            //todo the pointer check shouldn't be necessary and probably means i need to fix something in psionic
+                            gd_delta["object"] = ps_delta.object.get() != nullptr ? ps_delta.object->identifier.c_str() : "ERROR";
+                            gd_delta["type"] = enum_to_str(ps_delta.type,PSEngine::to_object_delta_type).value_or("ERROR").c_str();
+
+                            gd_deltas.append(gd_delta);
+                        }
+                        gd_cell_delta["deltas"] = gd_deltas;
+
+                        gd_cells_deltas.append(gd_cell_delta);
+                    }
+
+                    gd_application_delta["cell_deltas"] = gd_cells_deltas;
+                    gd_rule_apllications.append(gd_application_delta);
+                }
+
+                gd_rule_delta["rule_applications"] = gd_rule_apllications;
+            }
             gd_subturn_deltas.append(gd_rule_delta);
         }
 
@@ -207,7 +258,7 @@ int GDPSEngine::get_level_count()
 {
     return m_psengine.get_number_of_levels();
 }
-    
+
 void GDPSEngine::load_level(int p_level_idx)
 {
     m_psengine.load_level(p_level_idx);

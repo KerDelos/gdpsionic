@@ -19,7 +19,7 @@ class GDLogger : public PSLogger
         else
         {
             print_line(p_msg.c_str());
-        } 
+        }
     };
 };
 
