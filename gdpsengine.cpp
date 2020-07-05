@@ -23,6 +23,7 @@ void GDPSEngine::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_level_count"), &GDPSEngine::get_level_count);
     ClassDB::bind_method(D_METHOD("load_level","level_idx"), &GDPSEngine::load_level);
     ClassDB::bind_method(D_METHOD("is_level_complete"), &GDPSEngine::is_level_complete);
+    ClassDB::bind_method(D_METHOD("get_texture_for_display"), &GDPSEngine::get_texture_for_display);
 
 }
 
@@ -78,6 +79,9 @@ void GDPSEngine::load_game_from_file_path(String p_fpath)
         {
             print_line("gdpsengine : loading game");
             m_psengine.load_game(compiled_puzzle_opt.value());
+            m_compiled_game = compiled_puzzle_opt.value();
+            cache_graphic_data();
+            game_loaded = true; //todo this should probably be in the psengine somehow
         }
     }
     else
@@ -252,6 +256,146 @@ Array GDPSEngine::get_turn_deltas()
     }
 
     return gd_turn_deltas;
+}
+
+Ref<Image> GDPSEngine::get_texture_for_display()
+{
+    //gd script code, temporarily here so it doesn't get lost
+    /*
+    var image = Globals.psengine.get_texture_for_display()
+    var im_data = image.data;
+    var texture = ImageTexture.new()
+    texture.create_from_image(image)
+    #ResourceSaver.save("res://saved_texture.tres", texture)
+    #for some reason it didn't work before saving it as a texture and using the saved texture in the sprite
+    $Sprite.set_texture(texture);
+    */
+
+    Ref<Image> image;
+    image.instance();
+
+    if(!game_loaded)
+    {
+        //todo log error
+        return image;
+    }
+
+    static map<CompiledGame::Color::ColorName, Color> color_map =
+    {
+        {CompiledGame::Color::ColorName::None, Color(1.0,0.5,0.5,1.0)},
+        {CompiledGame::Color::ColorName::Black, Color::named("Black")},
+        {CompiledGame::Color::ColorName::White, Color::named("White")},
+        {CompiledGame::Color::ColorName::LightGray, Color::named("LightGray")},
+        {CompiledGame::Color::ColorName::Gray, Color::named("Gray")},
+        {CompiledGame::Color::ColorName::DarkGray, Color::named("DarkGray")},
+        {CompiledGame::Color::ColorName::Grey, Color::named("Gray")},
+        {CompiledGame::Color::ColorName::Red, Color::named("Red")},
+        {CompiledGame::Color::ColorName::DarkRed, Color::named("DarkRed")},
+        {CompiledGame::Color::ColorName::LightRed, Color::named("crimson")},
+        {CompiledGame::Color::ColorName::Brown, Color::named("Brown")},
+        {CompiledGame::Color::ColorName::DarkBrown, Color::named("saddlebrown")},
+        {CompiledGame::Color::ColorName::LightBrown, Color::named("sandybrown")},
+        {CompiledGame::Color::ColorName::Orange, Color::named("Orange")},
+        {CompiledGame::Color::ColorName::Yellow, Color::named("Yellow")},
+        {CompiledGame::Color::ColorName::Green, Color::named("Green")},
+        {CompiledGame::Color::ColorName::DarkGreen, Color::named("DarkGreen")},
+        {CompiledGame::Color::ColorName::LightGreen, Color::named("LightGreen")},
+        {CompiledGame::Color::ColorName::Blue, Color::named("Blue")},
+        {CompiledGame::Color::ColorName::LightBlue, Color::named("LightBlue")},
+        {CompiledGame::Color::ColorName::DarkBlue, Color::named("DarkBlue")},
+        {CompiledGame::Color::ColorName::Purple, Color::named("Purple")},
+        {CompiledGame::Color::ColorName::Pink, Color::named("Pink")},
+        {CompiledGame::Color::ColorName::Transparent, Color(0.0,0.0,0.0,0.0)},
+    };
+
+    PSEngine::Level level = m_psengine.get_level_state();
+    const int PIXEL_NUMBER = 5; //todo this should be read for the engine or the compiled game
+    vector<vector<string>> level_content = get_ordered_level_objects_by_collision_layers();
+
+    image->create(level.width*PIXEL_NUMBER,level.height*PIXEL_NUMBER,false, Image::Format::FORMAT_RGBAF);
+
+    image->lock();
+    for(int x = 0 ; x < level.width*PIXEL_NUMBER; ++x)
+    {
+        for(int y = 0 ; y < level.height*PIXEL_NUMBER; ++y)
+        {
+            int cell_x = x/PIXEL_NUMBER;
+            int cell_y = y/PIXEL_NUMBER;
+            vector<string> current_cell = level_content[cell_y*level.width+cell_x];
+
+            int sprite_x = x%PIXEL_NUMBER;
+            int sprite_y = y%PIXEL_NUMBER;
+
+            bool first_layer = true;
+
+            for(const string& obj : current_cell)
+            {
+                CompiledGame::ObjectGraphicData graphic_data = m_cached_graphic_data[obj];
+
+                if(graphic_data.pixels.size() == 0)
+                {
+                    image->set_pixel(x,y,color_map[graphic_data.colors[0].name]);
+                }
+                else
+                {
+                    int pixel_color = graphic_data.pixels[sprite_y*PIXEL_NUMBER+sprite_x];
+                    if(pixel_color == -1)
+                    {
+                        if(first_layer) //so we don't override colors of layers below
+                        {
+                            image->set_pixel(x,y,color_map[CompiledGame::Color::ColorName::Transparent]);
+                        }
+                    }
+                    else
+                    {
+                        image->set_pixel(x,y,color_map[graphic_data.colors[pixel_color].name]);
+                    }
+
+                }
+                first_layer = false;
+            }
+        }
+    }
+
+
+    image->unlock();
+
+    return image;
+}
+
+
+vector<vector<string>> GDPSEngine::get_ordered_level_objects_by_collision_layers() const
+{
+    vector<vector<string>> result;
+
+    for(const auto& cell : m_psengine.get_level_state().cells)
+    {
+        vector<string> cell_content;
+
+        for(const auto& col_layer : m_compiled_game.collision_layers)
+        {
+            for(const auto& obj : cell.objects)
+            {
+                if(col_layer->is_object_on_layer(obj.first))
+                {
+                    cell_content.push_back(obj.first->identifier);
+                }
+            }
+        }
+
+        result.push_back(cell_content);
+    }
+    return result;
+}
+
+void GDPSEngine::cache_graphic_data()
+{
+    m_cached_graphic_data.clear();
+
+    for(const auto& pair : m_compiled_game.graphics_data)
+    {
+        m_cached_graphic_data[pair.first->identifier] = pair.second;
+    }
 }
 
 int GDPSEngine::get_level_count()
