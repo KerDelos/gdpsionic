@@ -37,8 +37,9 @@ public:
     void load_game_from_file_path(String p_fpath);
 
     Dictionary get_level_state();
-    void send_input(String p_input);
 
+    Array tick(float p_delta);
+    Array send_input(String p_input);
     Array get_turn_deltas();
 
     int get_level_count();
@@ -49,6 +50,8 @@ public:
     Ref<Image> get_texture_for_display();
 
 protected:
+    Array convert_turn_deltas(vector<PSEngine::SubturnHistory> p_turn_delta);
+
     vector<vector<string>> get_ordered_level_objects_by_collision_layers() const;
     void cache_graphic_data();
 

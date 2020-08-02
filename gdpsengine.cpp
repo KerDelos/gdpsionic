@@ -20,6 +20,7 @@ void GDPSEngine::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_level_state"), &GDPSEngine::get_level_state);
     ClassDB::bind_method(D_METHOD("get_turn_deltas"), &GDPSEngine::get_turn_deltas);
     ClassDB::bind_method(D_METHOD("send_input","input"), &GDPSEngine::send_input);
+    ClassDB::bind_method(D_METHOD("tick","delta"), &GDPSEngine::tick);
     ClassDB::bind_method(D_METHOD("get_level_count"), &GDPSEngine::get_level_count);
     ClassDB::bind_method(D_METHOD("load_level","level_idx"), &GDPSEngine::load_level);
     ClassDB::bind_method(D_METHOD("is_level_complete"), &GDPSEngine::is_level_complete);
@@ -122,8 +123,10 @@ Dictionary GDPSEngine::get_level_state()
     return lvl;
 }
 
-void GDPSEngine::send_input(String p_input)
+Array GDPSEngine::send_input(String p_input)
 {
+    Array result;
+
     if(p_input == "undo")
     {
         m_psengine.undo();
@@ -144,7 +147,7 @@ void GDPSEngine::send_input(String p_input)
 
         if( input_mapping.find(p_input) != input_mapping.end() )
         {
-            m_psengine.receive_input(input_mapping[p_input]);
+            result = convert_turn_deltas(m_psengine.receive_input(input_mapping[p_input]).value_or(vector<PSEngine::SubturnHistory>()));
         }
         else
         {
@@ -152,15 +155,20 @@ void GDPSEngine::send_input(String p_input)
         }
     }
     m_psengine.print_game_state();
+
+    return result;
 }
 
-Array GDPSEngine::get_turn_deltas()
+Array GDPSEngine::tick(float p_delta)
 {
-    vector<PSEngine::SubturnHistory> ps_turn_deltas = m_psengine.get_turn_deltas();
+    return convert_turn_deltas(m_psengine.tick(p_delta).value_or(vector<PSEngine::SubturnHistory>()));
+}
 
+Array GDPSEngine::convert_turn_deltas(vector<PSEngine::SubturnHistory> p_turn_delta)
+{
     Array gd_turn_deltas;
 
-    for(const auto& ps_subturn_delta : ps_turn_deltas)
+    for(const auto& ps_subturn_delta : p_turn_delta)
     {
         Array gd_subturn_deltas;
 
@@ -256,6 +264,13 @@ Array GDPSEngine::get_turn_deltas()
     }
 
     return gd_turn_deltas;
+}
+
+Array GDPSEngine::get_turn_deltas()
+{
+    vector<PSEngine::SubturnHistory> ps_turn_deltas = m_psengine.get_turn_deltas();
+
+    return convert_turn_deltas(ps_turn_deltas);
 }
 
 Ref<Image> GDPSEngine::get_texture_for_display()
