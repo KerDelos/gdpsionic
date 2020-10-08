@@ -19,3 +19,32 @@ ps_engine_lib_sources = ["Psionic/src/CompiledGame.cpp",
 
 module_env.add_source_files(module_env.modules_sources, "*.cpp") # Add all cpp files to the build
 module_env.add_source_files(module_env.modules_sources, ps_engine_lib_sources)
+
+
+# for Windows comment everything above and uncomment below
+'''
+Import('env')
+
+module_env = env.Clone()
+
+
+print(dir(module_env))
+
+module_env.Prepend(CCFLAGS=['-std:c++17'])
+#module_env.Append(CXXFLAGS=['/Wno-sign-compare'])
+module_env.Append(CXXFLAGS = " /EHsc")
+module_env["CCFLAGS"].pop(1) #this is ugly but I couldn't find any other way for now
+print(module_env["CCFLAGS"])
+
+module_env.Prepend(CPPPATH = ['Psionic/include/'])
+ps_engine_lib_sources = ["Psionic/src/CompiledGame.cpp",
+"Psionic/src/Compiler.cpp",
+"Psionic/src/PSEngine.cpp",
+"Psionic/src/ParsedGame.cpp",
+"Psionic/src/Parser.cpp",
+"Psionic/src/TextProvider.cpp",
+"Psionic/src/PSLogger.cpp"]
+
+module_env.add_source_files(module_env.modules_sources, "*.cpp") # Add all cpp files to the build
+module_env.add_source_files(module_env.modules_sources, ps_engine_lib_sources)
+'''
