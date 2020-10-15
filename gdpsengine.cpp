@@ -226,32 +226,21 @@ Array GDPSEngine::convert_turn_deltas(vector<PSEngine::SubturnHistory> p_turn_de
                     }
                     gd_application_delta["pattern_match_info"] = gd_pattern_match_infos;
 
-                    Array gd_cells_deltas;
+                    Array gd_deltas;
 
-                    for(const auto& ps_cell_delta : ps_application_delta.cell_deltas)
+                    for(const auto& ps_delta : ps_application_delta.object_deltas)
                     {
-                        Dictionary gd_cell_delta;
+                        Dictionary gd_delta;
+                        //todo the pointer check shouldn't be necessary and probably means i need to fix something in psionic
+                        gd_delta["x"] = ps_delta.cell_x;
+                        gd_delta["y"] = ps_delta.cell_y;
+                        gd_delta["object"] = ps_delta.object.get() != nullptr ? ps_delta.object->identifier.c_str() : "ERROR";
+                        gd_delta["type"] = enum_to_str(ps_delta.type,CompiledGame::to_object_delta_type).value_or("ERROR").c_str();
 
-                        gd_cell_delta["x"] = ps_cell_delta.x;
-                        gd_cell_delta["y"] = ps_cell_delta.y;
-
-                        Array gd_deltas;
-
-                        for(const auto& ps_delta : ps_cell_delta.deltas)
-                        {
-                            Dictionary gd_delta;
-                            //todo the pointer check shouldn't be necessary and probably means i need to fix something in psionic
-                            gd_delta["object"] = ps_delta.object.get() != nullptr ? ps_delta.object->identifier.c_str() : "ERROR";
-                            gd_delta["type"] = enum_to_str(ps_delta.type,PSEngine::to_object_delta_type).value_or("ERROR").c_str();
-
-                            gd_deltas.append(gd_delta);
-                        }
-                        gd_cell_delta["deltas"] = gd_deltas;
-
-                        gd_cells_deltas.append(gd_cell_delta);
+                        gd_deltas.append(gd_delta);
                     }
 
-                    gd_application_delta["cell_deltas"] = gd_cells_deltas;
+                    gd_application_delta["objects_deltas"] = gd_deltas;
                     gd_rule_apllications.append(gd_application_delta);
                 }
 
