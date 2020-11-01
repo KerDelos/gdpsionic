@@ -37,7 +37,10 @@ GDPSEngine::~GDPSEngine() {
 
 void GDPSEngine::_init() {
     shared_ptr<PSLogger> gdlogger = make_shared<GDLogger>(GDLogger());
-    m_psengine = PSEngine(gdlogger);
+    gdlogger->log_verbosity = PSLogger::LogType::Warning;
+    PSEngine::Config engine_config;
+    engine_config.log_verbosity = PSLogger::LogType::Warning;
+    m_psengine = PSEngine(engine_config,gdlogger);
 }
 
 
