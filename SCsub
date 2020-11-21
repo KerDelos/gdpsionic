@@ -32,7 +32,7 @@ print(dir(module_env))
 
 module_env.Prepend(CCFLAGS=['-std:c++17'])
 #module_env.Append(CXXFLAGS=['/Wno-sign-compare'])
-module_env.Append(CXXFLAGS = " /EHsc")
+module_env.Append(CXXFLAGS = "/EHsc")
 module_env["CCFLAGS"].pop(1) #this is ugly but I couldn't find any other way for now
 print(module_env["CCFLAGS"])
 
