@@ -126,9 +126,9 @@ Dictionary GDPSEngine::get_level_state()
     return lvl;
 }
 
-Array GDPSEngine::send_input(String p_input)
+Dictionary GDPSEngine::send_input(String p_input)
 {
-    Array result;
+    Dictionary result;
 
     if(p_input == "undo")
     {
@@ -150,7 +150,7 @@ Array GDPSEngine::send_input(String p_input)
 
         if( input_mapping.find(p_input) != input_mapping.end() )
         {
-            result = convert_turn_deltas(m_psengine.receive_input(input_mapping[p_input]).value_or(vector<PSEngine::SubturnHistory>()));
+            result = convert_turn_deltas(m_psengine.receive_input(input_mapping[p_input]).value_or(PSEngine::TurnHistory()));
         }
         else
         {
@@ -162,16 +162,19 @@ Array GDPSEngine::send_input(String p_input)
     return result;
 }
 
-Array GDPSEngine::tick(float p_delta)
+Dictionary GDPSEngine::tick(float p_delta)
 {
-    return convert_turn_deltas(m_psengine.tick(p_delta).value_or(vector<PSEngine::SubturnHistory>()));
+    return convert_turn_deltas(m_psengine.tick(p_delta).value_or(PSEngine::TurnHistory()));
 }
 
-Array GDPSEngine::convert_turn_deltas(vector<PSEngine::SubturnHistory> p_turn_delta)
+Dictionary GDPSEngine::convert_turn_deltas(PSEngine::TurnHistory p_turn_delta)
 {
+    Dictionary gd_turn;
+    gd_turn["was_turn_cancelled"] = p_turn_delta.was_turn_cancelled;
+
     Array gd_turn_deltas;
 
-    for(const auto& ps_subturn_delta : p_turn_delta)
+    for(const auto& ps_subturn_delta : p_turn_delta.subturns)
     {
         Array gd_subturn_deltas;
 
@@ -190,6 +193,7 @@ Array GDPSEngine::convert_turn_deltas(vector<PSEngine::SubturnHistory> p_turn_de
                     gd_movement["origin_y"] = ps_movement_delta.origin_y;
                     gd_movement["destination_x"] = ps_movement_delta.destination_x;
                     gd_movement["destination_y"] = ps_movement_delta.destination_y;
+                    gd_movement["moved_successfully"] = ps_movement_delta.moved_successfully;
                     gd_movement["move_direction"] = enum_to_str(ps_movement_delta.move_direction,PSEngine::to_absolute_direction).value_or("ERROR").c_str();
                     gd_movement["object"] = ps_movement_delta.object.get() != nullptr ? ps_movement_delta.object->identifier.c_str() : "ERROR";
 
@@ -234,9 +238,9 @@ Array GDPSEngine::convert_turn_deltas(vector<PSEngine::SubturnHistory> p_turn_de
                     for(const auto& ps_delta : ps_application_delta.object_deltas)
                     {
                         Dictionary gd_delta;
-                        //todo the pointer check shouldn't be necessary and probably means i need to fix something in psionic
                         gd_delta["x"] = ps_delta.cell_x;
                         gd_delta["y"] = ps_delta.cell_y;
+                        //todo the pointer check shouldn't be necessary and probably means i need to fix something in psionic
                         gd_delta["object"] = ps_delta.object.get() != nullptr ? ps_delta.object->identifier.c_str() : "ERROR";
                         gd_delta["type"] = enum_to_str(ps_delta.type,CompiledGame::to_object_delta_type).value_or("ERROR").c_str();
 
@@ -255,12 +259,14 @@ Array GDPSEngine::convert_turn_deltas(vector<PSEngine::SubturnHistory> p_turn_de
         gd_turn_deltas.append(gd_subturn_deltas);
     }
 
-    return gd_turn_deltas;
+    gd_turn["subturns"] = gd_turn_deltas;
+
+    return gd_turn;
 }
 
-Array GDPSEngine::get_turn_deltas()
+Dictionary GDPSEngine::get_turn_deltas()
 {
-    vector<PSEngine::SubturnHistory> ps_turn_deltas = m_psengine.get_turn_deltas();
+    PSEngine::TurnHistory ps_turn_deltas = m_psengine.get_turn_deltas();
 
     return convert_turn_deltas(ps_turn_deltas);
 }
