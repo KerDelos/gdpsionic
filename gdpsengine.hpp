@@ -42,6 +42,9 @@ public:
     Dictionary send_input(String p_input);
     Dictionary get_turn_deltas();
 
+    Array get_messages_before_level(int p_level_idx);
+    Array get_messages_after_level(int p_level_idx);
+
     int get_level_count();
     void load_level(int p_level_idx);
 

@@ -22,6 +22,8 @@ void GDPSEngine::_bind_methods() {
     ClassDB::bind_method(D_METHOD("send_input","input"), &GDPSEngine::send_input);
     ClassDB::bind_method(D_METHOD("tick","delta"), &GDPSEngine::tick);
     ClassDB::bind_method(D_METHOD("get_level_count"), &GDPSEngine::get_level_count);
+    ClassDB::bind_method(D_METHOD("get_messages_before_level", "p_level_idx"), &GDPSEngine::get_messages_before_level);
+    ClassDB::bind_method(D_METHOD("get_messages_after_level", "p_level_idx"), &GDPSEngine::get_messages_after_level);
     ClassDB::bind_method(D_METHOD("load_level","level_idx"), &GDPSEngine::load_level);
     ClassDB::bind_method(D_METHOD("is_level_complete"), &GDPSEngine::is_level_complete);
     ClassDB::bind_method(D_METHOD("get_texture_for_display"), &GDPSEngine::get_texture_for_display);
@@ -176,8 +178,20 @@ Dictionary GDPSEngine::convert_turn_deltas(PSEngine::TurnHistory p_turn_delta)
 
     for(const auto& ps_subturn_delta : p_turn_delta.subturns)
     {
-        Array gd_subturn_deltas;
+        Dictionary gd_subturn;
 
+        Array gd_messages;
+        for(const auto& ps_command : ps_subturn_delta.gather_all_subturn_commands())
+        {
+            if(ps_command.type == CompiledGame::CommandType::Message)
+            {
+                gd_messages.append(ps_command.message.c_str());
+            }
+        }
+
+        gd_subturn["messages"] = gd_messages;
+
+        Array gd_subturn_deltas;
         for(const auto& ps_rule_delta : ps_subturn_delta.steps)
         {
             Dictionary gd_rule_delta;
@@ -256,7 +270,8 @@ Dictionary GDPSEngine::convert_turn_deltas(PSEngine::TurnHistory p_turn_delta)
             gd_subturn_deltas.append(gd_rule_delta);
         }
 
-        gd_turn_deltas.append(gd_subturn_deltas);
+        gd_subturn["steps"] = gd_subturn_deltas;
+        gd_turn_deltas.append(gd_subturn);
     }
 
     gd_turn["subturns"] = gd_turn_deltas;
@@ -424,4 +439,24 @@ void GDPSEngine::load_level(int p_level_idx)
 bool GDPSEngine::is_level_complete()
 {
     return m_psengine.is_level_won();
+}
+
+Array GDPSEngine::get_messages_before_level(int p_level_idx)
+{
+    Array messages;
+    for(const string& msg : m_psengine.get_messages_before_level(p_level_idx))
+    {
+        messages.append(msg.c_str());
+    }
+    return messages;
+}
+
+Array GDPSEngine::get_messages_after_level(int p_level_idx)
+{
+    Array messages;
+    for(const string& msg : m_psengine.get_messages_after_level(p_level_idx))
+    {
+        messages.append(msg.c_str());
+    }
+    return messages;
 }
