@@ -7,6 +7,7 @@
 #include "gdLogger.hpp"
 #include "EnumHelpers.hpp"
 
+#include <chrono>
 #include <map>
 
 
@@ -61,29 +62,27 @@ void GDPSEngine::load_game_from_file_path(String p_fpath)
     std::string file_content = "";
     if(gdfile->is_open())
     {
-        print_line("gdpsengine : opened gd file");
+        gdlogger->log(PSLogger::LogType::Log,"GDPsionic", "opened gd file !");
         file_content = gdfile->get_as_utf8_string().utf8();
-        //print_line(file_content.c_str());
-
     }
     else
     {
-        print_line("gdpsengine : did not open gd file");
+        gdlogger->log(PSLogger::LogType::Error,"GDPsionic", "did not open gd file");
     }
 
     optional<ParsedGame> parsed_game = Parser::parse_from_string(file_content,gdlogger);
     if(parsed_game.has_value())
     {
-        print_line("gdpsengine : parsing complete,proceding to compilation") ;
+        gdlogger->log(PSLogger::LogType::Log,"GDPsionic", "parsing complete,proceding to compilation");
         Compiler puzzle_compiler(gdlogger);
         std::optional<CompiledGame> compiled_puzzle_opt = puzzle_compiler.compile_game(parsed_game.value());
         if(!compiled_puzzle_opt.has_value())
         {
-            print_line("gdpsengine : could not compile game properly");
+            gdlogger->log(PSLogger::LogType::Error,"GDPsionic", "could not compile game properly");
         }
         else
         {
-            print_line("gdpsengine : loading game");
+            gdlogger->log(PSLogger::LogType::Log,"GDPsionic", "loading game");
             m_psengine.load_game(compiled_puzzle_opt.value());
             m_compiled_game = compiled_puzzle_opt.value();
             cache_graphic_data();
@@ -92,7 +91,7 @@ void GDPSEngine::load_game_from_file_path(String p_fpath)
     }
     else
     {
-        print_line("gdpsengine : something went wrong during the game parsing");
+        gdlogger->log(PSLogger::LogType::Error,"GDPsionic", "something went wrong during the game parsing");
     }
 
     gdfile->close();
@@ -104,15 +103,15 @@ Dictionary GDPSEngine::get_level_state()
     PSEngine::Level level_state = m_psengine.get_level_state();
     Dictionary lvl;
     lvl["level_index"]= level_state.level_idx;
-    lvl["width"]= level_state.width;
-    lvl["height"]= level_state.height;
+    lvl["width"]= level_state.size.x;
+    lvl["height"]= level_state.size.y;
 
     Array cells;
     for(const PSEngine::Cell& cell: level_state.cells)
     {
         Dictionary cl;
-        cl["x"] = cell.x;
-        cl["y"] = cell.y;
+        cl["x"] = cell.position.x;
+        cl["y"] = cell.position.y;
 
         Array objects;
         for(const auto& pair: cell.objects)
@@ -130,6 +129,7 @@ Dictionary GDPSEngine::get_level_state()
 
 Dictionary GDPSEngine::send_input(String p_input)
 {
+
     Dictionary result;
 
     if(p_input == "undo")
@@ -152,14 +152,30 @@ Dictionary GDPSEngine::send_input(String p_input)
 
         if( input_mapping.find(p_input) != input_mapping.end() )
         {
-            result = convert_turn_deltas(m_psengine.receive_input(input_mapping[p_input]).value_or(PSEngine::TurnHistory()));
+            auto start_time = std::chrono::high_resolution_clock::now();
+
+            auto history = m_psengine.receive_input(input_mapping[p_input]).value_or(PSEngine::TurnHistory());
+
+            auto mid_time = std::chrono::high_resolution_clock::now();
+
+            result = convert_turn_deltas(history);
+
+            auto end_time = std::chrono::high_resolution_clock::now();
+
+            auto total_duration = std::chrono::duration_cast<std::chrono::microseconds>( end_time - start_time );
+            auto input_duration = std::chrono::duration_cast<std::chrono::microseconds>( mid_time - start_time );
+            auto convert_duration = std::chrono::duration_cast<std::chrono::microseconds>( end_time - mid_time );
+            std::cout <<"send_input ran in "<< total_duration.count() << " microseconds.\n";
+            std::cout <<"input phase ran in "<< input_duration.count() << " microseconds.\n";
+            std::cout <<"convert phase ran in "<< convert_duration.count() << " microseconds.\n";
+
         }
         else
         {
             print_error("Incorrect input sent to the psengine");
         }
     }
-    m_psengine.print_game_state();
+
 
     return result;
 }
@@ -203,10 +219,10 @@ Dictionary GDPSEngine::convert_turn_deltas(PSEngine::TurnHistory p_turn_delta)
                 for(const auto& ps_movement_delta : ps_rule_delta.movement_deltas)
                 {
                     Dictionary gd_movement;
-                    gd_movement["origin_x"] = ps_movement_delta.origin_x;
-                    gd_movement["origin_y"] = ps_movement_delta.origin_y;
-                    gd_movement["destination_x"] = ps_movement_delta.destination_x;
-                    gd_movement["destination_y"] = ps_movement_delta.destination_y;
+                    gd_movement["origin_x"] = ps_movement_delta.origin.x;
+                    gd_movement["origin_y"] = ps_movement_delta.origin.y;
+                    gd_movement["destination_x"] = ps_movement_delta.destination.x;
+                    gd_movement["destination_y"] = ps_movement_delta.destination.y;
                     gd_movement["moved_successfully"] = ps_movement_delta.moved_successfully;
                     gd_movement["move_direction"] = enum_to_str(ps_movement_delta.move_direction,PSEngine::to_absolute_direction).value_or("ERROR").c_str();
                     gd_movement["object"] = ps_movement_delta.object.get() != nullptr ? ps_movement_delta.object->identifier.c_str() : "ERROR";
@@ -233,8 +249,8 @@ Dictionary GDPSEngine::convert_turn_deltas(PSEngine::TurnHistory p_turn_delta)
                     for(const auto& ps_pattern_match_info : ps_application_delta.match_infos)
                     {
                         Dictionary gd_pattern_match;
-                        gd_pattern_match["x"] = ps_pattern_match_info.x;
-                        gd_pattern_match["y"] = ps_pattern_match_info.y;
+                        gd_pattern_match["x"] = ps_pattern_match_info.origin.x;
+                        gd_pattern_match["y"] = ps_pattern_match_info.origin.y;
 
                         Array gd_wildcard_match_distances;
                         for(const auto& ps_wildcard_match_distance: ps_pattern_match_info.wildcard_match_distances)
@@ -252,8 +268,8 @@ Dictionary GDPSEngine::convert_turn_deltas(PSEngine::TurnHistory p_turn_delta)
                     for(const auto& ps_delta : ps_application_delta.object_deltas)
                     {
                         Dictionary gd_delta;
-                        gd_delta["x"] = ps_delta.cell_x;
-                        gd_delta["y"] = ps_delta.cell_y;
+                        gd_delta["x"] = ps_delta.cell_position.x;
+                        gd_delta["y"] = ps_delta.cell_position.y;
                         //todo the pointer check shouldn't be necessary and probably means i need to fix something in psionic
                         gd_delta["object"] = ps_delta.object.get() != nullptr ? ps_delta.object->identifier.c_str() : "ERROR";
                         gd_delta["type"] = enum_to_str(ps_delta.type,CompiledGame::to_object_delta_type).value_or("ERROR").c_str();
@@ -340,16 +356,16 @@ Ref<Image> GDPSEngine::get_texture_for_display()
     const int PIXEL_NUMBER = 5; //todo this should be read for the engine or the compiled game
     vector<vector<string>> level_content = get_ordered_level_objects_by_collision_layers();
 
-    image->create(level.width*PIXEL_NUMBER,level.height*PIXEL_NUMBER,false, Image::Format::FORMAT_RGBAF);
+    image->create(level.size.x*PIXEL_NUMBER,level.size.y*PIXEL_NUMBER,false, Image::Format::FORMAT_RGBAF);
 
     image->lock();
-    for(int x = 0 ; x < level.width*PIXEL_NUMBER; ++x)
+    for(int x = 0 ; x < level.size.x*PIXEL_NUMBER; ++x)
     {
-        for(int y = 0 ; y < level.height*PIXEL_NUMBER; ++y)
+        for(int y = 0 ; y < level.size.y*PIXEL_NUMBER; ++y)
         {
             int cell_x = x/PIXEL_NUMBER;
             int cell_y = y/PIXEL_NUMBER;
-            vector<string> current_cell = level_content[cell_y*level.width+cell_x];
+            vector<string> current_cell = level_content[cell_y*level.size.x+cell_x];
 
             int sprite_x = x%PIXEL_NUMBER;
             int sprite_y = y%PIXEL_NUMBER;
