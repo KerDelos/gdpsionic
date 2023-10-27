@@ -2,13 +2,19 @@
 
 #include "register_types.h"
 
-#include "core/class_db.h"
+#include "core/object/class_db.h"
 #include "gdpsengine.hpp"
 
-void register_gdpsionic_types() {
-    ClassDB::register_class<GDPSEngine>();
+void initialize_gdpsionic_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+		return;
+	}
+	ClassDB::register_class<GDPSEngine>();
 }
 
-void unregister_gdpsionic_types() {
-   // Nothing to do here in this example.
+void uninitialize_gdpsionic_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+		return;
+	}
+	// Nothing to do here in this example.
 }

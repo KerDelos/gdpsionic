@@ -2,7 +2,7 @@
 
 Import('env')
 
-module_env = env.Clone()
+'''module_env = env.Clone()
 
 
 module_env.Append(CXXFLAGS=['-std=c++17'])
@@ -47,4 +47,4 @@ ps_engine_lib_sources = ["Psionic/src/CompiledGame.cpp",
 
 module_env.add_source_files(module_env.modules_sources, "*.cpp") # Add all cpp files to the build
 module_env.add_source_files(module_env.modules_sources, ps_engine_lib_sources)
-'''
+

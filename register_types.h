@@ -1,5 +1,6 @@
 /* register_types.h */
 
-void register_gdpsionic_types();
-void unregister_gdpsionic_types();
+#include "modules/register_module_types.h"
 
+void initialize_gdpsionic_module(ModuleInitializationLevel p_level);
+void uninitialize_gdpsionic_module(ModuleInitializationLevel p_level);
